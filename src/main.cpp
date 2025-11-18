@@ -3,14 +3,21 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <filesystem>
+#include <tuple>
 
-// 1. Incluimos TU librería
 #include "huffman/MatrixHuffman.hpp"
+#include "lector.hpp"
+#include "dictionary/Dictionary.hpp"
+#include "dictionary/Decoder.hpp"
 
-// 2. Incluimos la librería de normalización (Lector)
-#include "lector.hpp" 
+using dictionary::Decoder;
+using dictionary::Dictionary;
 
-int main() {
+static int run_compression();
+static void print_usage();
+
+static int run_compression() {
     // =========================================================
     // PASO 1: INTERACCIÓN BÁSICA (Pedir archivo)
     // =========================================================
@@ -121,4 +128,42 @@ int main() {
     }
 
     return 0;
+}
+
+static void print_usage() {
+	std::cout << "Usage:\n";
+	std::cout << "  Normal mode: run without arguments and follow prompts (process text normalization)\n";
+	std::cout << "  Decode mode:\n";
+	std::cout << "    ./uncompressor decode <input.bin> <output.txt>\n";
+}
+
+int main(int argc, char** argv) {
+	if (argc > 1 && std::string(argv[1]) == "decode") {
+		if (argc < 4) {
+			print_usage();
+			return 1;
+		}
+		std::string input_bin = argv[2];
+		std::string output_txt = argv[3];
+
+		Dictionary dict;
+
+		try {
+			std::string decoded = Decoder::decodeFile(input_bin, dict);
+			Decoder::writeText(output_txt, decoded);
+			std::error_code ec;
+			if (std::filesystem::remove(input_bin, ec)) {
+				std::cout << "Binario temporal eliminado: " << input_bin << "\n";
+			} else if (ec) {
+				std::cerr << "Advertencia: no se pudo eliminar " << input_bin << ": " << ec.message() << "\n";
+			}
+			std::cout << "Decodificación completa. Salida: " << output_txt << "\n";
+			return 0;
+		} catch (const std::exception& e) {
+			std::cerr << "Error en decodificación: " << e.what() << "\n";
+			return 1;
+		}
+	}
+
+	return run_compression();
 }
