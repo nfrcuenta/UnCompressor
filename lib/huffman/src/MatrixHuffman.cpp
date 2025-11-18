@@ -1,17 +1,66 @@
-//MatrixHuffman.cpp
-// 1. Incluimos la definición de este módulo
 #include "huffman/MatrixHuffman.hpp"
-
-// 2. Incluimos el árbol de Huffman para poder usarlo
 #include "huffman/HuffmanTree.hpp"
-
-// 3. Librerías estándar necesarias
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
+#include <cstring>
 
 namespace huffman {
 
+// --- CLASE AYUDANTE PARA ESCRIBIR BITS ---
+class BitWriter {
+    std::ofstream& out;
+    unsigned char buffer; 
+    int bitIndex;         
+
+public:
+    BitWriter(std::ofstream& stream) : out(stream), buffer(0), bitIndex(0) {}
+
+    void writeBits(const std::string& bits) {
+        for (char c : bits) {
+            if (c == '1') {
+                buffer |= (1 << (7 - bitIndex)); 
+            }
+            bitIndex++;
+
+            if (bitIndex == 8) {
+                out.put(buffer);
+                buffer = 0;
+                bitIndex = 0;
+            }
+        }
+    }
+
+    void flush() {
+        if (bitIndex > 0) {
+            out.put(buffer);
+        }
+    }
+};
+
+void escribirInt(std::ofstream& out, int valor) {
+    out.write(reinterpret_cast<const char*>(&valor), sizeof(valor));
+}
+
+void escribirString(std::ofstream& out, const std::string& s) {
+    int len = s.length();
+    escribirInt(out, len);
+    out.write(s.c_str(), len);
+}
+
+// --- DECLARACIÓN DE FUNCIÓN INTERNA ---
+void exportarBinario(
+    const std::string& nombreArchivo,
+    int filas,
+    int cols,
+    const std::string& valorFondo,
+    const std::vector<Triplete>& tripletas,
+    const std::map<std::string, std::string>& codigos
+);
+
+
+// --- FUNCIÓN PRINCIPAL ---
 std::map<std::string, std::string> procesarMatrizYExportar(
     const std::vector<Triplete>& datosDispersos,
     const std::string& valorMasFrecuente,
@@ -19,70 +68,96 @@ std::map<std::string, std::string> procesarMatrizYExportar(
     int totalCols,
     const std::string& nombreArchivoSalida)
 {
-    // --- PASO 1: Calcular Frecuencias ---
+    // 1. Calcular Frecuencias
     std::map<std::string, int> frecuencias;
-
-    // A. Contar los elementos que SÍ están en la lista dispersa
     for (const auto& item : datosDispersos) {
         frecuencias[item.valor]++;
     }
-
-    // B. Calcular cuántas veces aparece el valor de fondo ("2a")
-    // Total celdas = filas * columnas
-    long long totalCeldas = (long long)totalFilas * totalCols;
-    long long celdasOcupadas = datosDispersos.size();
-    long long celdasVacias = totalCeldas - celdasOcupadas;
     
+    long long totalCeldas = (long long)totalFilas * totalCols;
+    long long celdasVacias = totalCeldas - datosDispersos.size();
     if (celdasVacias > 0) {
         frecuencias[valorMasFrecuente] += celdasVacias;
     }
 
-    // --- PASO 2: Generar Huffman ---
-    // Creamos el árbol con el mapa de frecuencias calculado
+    // 2. Generar Huffman
     HuffmanTree arbol(frecuencias);
-    
-    // Obtenemos el diccionario { "14f": "101", "2a": "0", ... }
-    std::map<std::string, std::string> diccionarioCodigos = arbol.getCodes();
+    auto diccionario = arbol.getCodes();
 
-    // --- PASO 3: Reconstruir y Guardar en TXT ---
-    
-    // PRECAUCIÓN: Si la matriz es GIGANTE, crear este vector puede llenar la RAM.
-    // Si la matriz es pequeña/mediana, este método es el más sencillo y claro.
-    
-    // 3a. Obtener el código del fondo ("2a")
-    std::string codigoFondo = diccionarioCodigos[valorMasFrecuente];
-    
-    // 3b. Crear matriz en memoria llena con el código de fondo
-    std::vector<std::vector<std::string>> matrizReconstruida(
-        totalFilas, 
-        std::vector<std::string>(totalCols, codigoFondo)
-    );
-
-    // 3c. Sobrescribir solo las posiciones que venían en la lista dispersa
-    for (const auto& item : datosDispersos) {
-        if (item.fila < totalFilas && item.col < totalCols) {
-            // Buscamos el código de este valor específico y lo colocamos
-            matrizReconstruida[item.fila][item.col] = diccionarioCodigos[item.valor];
+    // 3. Exportar
+    if (nombreArchivoSalida.find(".bin") != std::string::npos) {
+        exportarBinario(nombreArchivoSalida, totalFilas, totalCols, valorMasFrecuente, datosDispersos, diccionario);
+    } else {
+        // Modo Texto (simplificado)
+        std::string codigoFondo = diccionario[valorMasFrecuente];
+        std::vector<std::vector<std::string>> matrizReconstruida(totalFilas, std::vector<std::string>(totalCols, codigoFondo));
+        
+        for (const auto& item : datosDispersos) {
+            if(item.fila < totalFilas && item.col < totalCols)
+                matrizReconstruida[item.fila][item.col] = diccionario[item.valor];
         }
-    }
-
-    // 3d. Escribir al archivo
-    std::ofstream archivo(nombreArchivoSalida);
-    if (archivo.is_open()) {
+        
+        std::ofstream archivo(nombreArchivoSalida);
         for (int i = 0; i < totalFilas; ++i) {
             for (int j = 0; j < totalCols; ++j) {
-                archivo << matrizReconstruida[i][j] << " ";
+                archivo << matrizReconstruida[i][j]; 
             }
-            archivo << "\n"; 
+            archivo << "\n";
         }
-        archivo.close();
-        // Opcional: Mensaje de debug
-        // std::cout << "Archivo generado: " << nombreArchivoSalida << "\n";
-    } else {
-        std::cerr << "Error: No se pudo crear el archivo " << nombreArchivoSalida << "\n";
     }
 
-    return diccionarioCodigos;
+    return diccionario;
+}
+
+// --- IMPLEMENTACIÓN BINARIA ---
+void exportarBinario(
+    const std::string& nombreArchivo,
+    int filas,
+    int cols,
+    const std::string& valorFondo,
+    const std::vector<Triplete>& tripletas,
+    const std::map<std::string, std::string>& codigos)
+{
+    std::ofstream out(nombreArchivo, std::ios::binary);
+    if (!out.is_open()) {
+        std::cerr << "Error al crear archivo binario.\n";
+        return;
+    }
+
+    // A. CABECERA
+    escribirInt(out, filas);
+    escribirInt(out, cols);
+    
+    // B. DICCIONARIO
+    int tamDiccionario = codigos.size();
+    escribirInt(out, tamDiccionario);
+    for (const auto& par : codigos) {
+        escribirString(out, par.first);  
+        escribirString(out, par.second); 
+    }
+
+    // C. RECONSTRUCCIÓN EN MEMORIA (Para bitstream continuo)
+    std::string codigoFondo = codigos.at(valorFondo);
+    std::vector<std::vector<std::string>> matriz(filas, std::vector<std::string>(cols, codigoFondo));
+
+    for (const auto& tri : tripletas) {
+        if (tri.fila < filas && tri.col < cols) {
+            matriz[tri.fila][tri.col] = codigos.at(tri.valor);
+        }
+    }
+
+    // D. ESCRIBIR BITS
+    BitWriter bitWriter(out);
+    
+    for (int i = 0; i < filas; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            bitWriter.writeBits(matriz[i][j]);
+        }
+    }
+    
+    bitWriter.flush(); 
+    out.close();
+    std::cout << "[BINARIO] Archivo optimizado generado: " << nombreArchivo << "\n";
 }
 
 } // namespace huffman

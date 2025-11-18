@@ -1,4 +1,3 @@
-//MatrixHuffman.hpp
 #ifndef MATRIX_HUFFMAN_HPP
 #define MATRIX_HUFFMAN_HPP
 
@@ -8,28 +7,29 @@
 
 namespace huffman {
 
-// Estructura para recibir los datos de la matriz dispersa
 struct Triplete {
     int fila;
     int col;
     std::string valor;
 };
 
-/**
- * @brief Procesa una matriz dispersa, genera códigos Huffman y exporta a TXT.
- * * @param datosDispersos Vector con los tripletas (fila, col, valor) no nulos.
- * @param valorMasFrecuente El string que representa el fondo (ej: "2a").
- * @param totalFilas Dimensiones originales de la matriz.
- * @param totalCols Dimensiones originales de la matriz.
- * @param nombreArchivoSalida Ruta donde se guardará la matriz codificada.
- * @return std::map<std::string, std::string> El diccionario generado.
- */
+// Función principal que decide si exportar a TXT o BIN
 std::map<std::string, std::string> procesarMatrizYExportar(
     const std::vector<Triplete>& datosDispersos,
     const std::string& valorMasFrecuente,
     int totalFilas,
     int totalCols,
     const std::string& nombreArchivoSalida
+);
+
+// Función interna para la lógica binaria
+void exportarBinario(
+    const std::string& nombreArchivo,
+    int filas,
+    int cols,
+    const std::string& valorFondo,
+    const std::vector<Triplete>& tripletas,
+    const std::map<std::string, std::string>& codigos
 );
 
 } // namespace huffman
