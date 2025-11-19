@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <tuple>
+#include <cctype>
 
 #include "huffman/MatrixHuffman.hpp"
 #include "lector.hpp"
@@ -15,6 +16,7 @@ using dictionary::Decoder;
 using dictionary::Dictionary;
 
 static int run_compression();
+static int run_decompression();
 static void print_usage();
 
 static int run_compression() {
@@ -130,6 +132,41 @@ static int run_compression() {
     return 0;
 }
 
+static int run_decompression() {
+    std::cout << "=== DECODIFICADOR HUFFMAN PARA MATRICES DISPERSAS ===\n";
+    std::cout << "Ingrese la ruta del archivo .bin a decodificar [matriz_comprimida.bin]: ";
+    std::string bin_path;
+    std::getline(std::cin, bin_path);
+    if (bin_path.empty()) {
+        bin_path = "matriz_comprimida.bin";
+    }
+
+    if (!std::filesystem::exists(bin_path)) {
+        std::cerr << "[ERROR] No se encontro el archivo: " << bin_path << "\n";
+        return 1;
+    }
+
+    std::cout << "Ingrese la ruta del archivo de texto donde guardar la salida [matriz_recuperada.txt]: ";
+    std::string output_path;
+    std::getline(std::cin, output_path);
+    if (output_path.empty()) {
+        output_path = "matriz_recuperada.txt";
+    }
+
+    Dictionary dict;
+
+    try {
+        std::cout << "[INFO] Decodificando '" << bin_path << "'...\n";
+        std::string decoded = Decoder::decodeFile(bin_path, dict);
+        Decoder::writeText(output_path, decoded);
+        std::cout << "[INFO] Matriz restaurada y guardada en '" << output_path << "'.\n";
+        return 0;
+    } catch (const std::exception& e) {
+        std::cerr << "[ERROR] No se pudo decodificar: " << e.what() << "\n";
+        return 1;
+    }
+}
+
 static void print_usage() {
 	std::cout << "Usage:\n";
 	std::cout << "  Normal mode: run without arguments and follow prompts (process text normalization)\n";
@@ -163,6 +200,18 @@ int main(int argc, char** argv) {
 			std::cerr << "Error en decodificación: " << e.what() << "\n";
 			return 1;
 		}
+	}
+
+	std::cout << "Seleccione una opcion:\n";
+	std::cout << "  1) Comprimir texto\n";
+	std::cout << "  2) Descomprimir binario\n";
+	std::cout << "Opcion [1]: ";
+	std::string choice;
+	std::getline(std::cin, choice);
+	char normalized = choice.empty() ? '1' : static_cast<char>(std::tolower(choice.front()));
+
+	if (normalized == '2' || normalized == 'd') {
+		return run_decompression();
 	}
 
 	return run_compression();
