@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <vector>
+#include <cstdint>
 
 using namespace dictionary;
 
@@ -61,6 +62,54 @@ private:
     unsigned char buffer;
 };
 
+// Convierte un codepoint Unicode a UTF-8 y lo concatena al string de salida.
+void appendUtf8(std::string& out, uint32_t cp) {
+    if (cp <= 0x7F) {
+        out.push_back(static_cast<char>(cp));
+    } else if (cp <= 0x7FF) {
+        out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else if (cp <= 0xFFFF) {
+        out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else if (cp <= 0x10FFFF) {
+        out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+        out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+    } else {
+        throw std::runtime_error("Codepoint fuera de rango UTF-8.");
+    }
+}
+
+// Los símbolos almacenados en el diccionario son enteros en texto (codepoints).
+// Esta función los traduce nuevamente a caracteres UTF-8.
+std::string tokenToUtf8(const std::string& token) {
+    if (token.empty()) {
+        return "";
+    }
+
+    size_t consumed = 0;
+    long long value = 0;
+    try {
+        value = std::stoll(token, &consumed, 10);
+    } catch (const std::exception&) {
+        throw std::runtime_error("Simbolo no numerico encontrado durante la decodificacion.");
+    }
+
+    if (consumed != token.size()) {
+        throw std::runtime_error("Simbolo con caracteres adicionales detectado durante la decodificacion.");
+    }
+    if (value < 0 || value > 0x10FFFF) {
+        throw std::runtime_error("Codepoint fuera de rango en el payload decodificado.");
+    }
+
+    std::string utf8;
+    appendUtf8(utf8, static_cast<uint32_t>(value));
+    return utf8;
+}
+
 // Reconstruye la matriz textual en formato legible (filas separadas por '\n').
 std::string formatMatrix(const std::vector<std::string>& tokens, int rows, int cols) {
     if (rows == 0 || cols == 0) {
@@ -73,10 +122,7 @@ std::string formatMatrix(const std::vector<std::string>& tokens, int rows, int c
             if (idx >= tokens.size()) {
                 throw std::runtime_error("Cantidad de tokens insuficiente para reconstruir la matriz.");
             }
-            oss << tokens[idx];
-            if (j + 1 < cols) {
-                oss << ' ';
-            }
+            oss << tokenToUtf8(tokens[idx]);
         }
         if (i + 1 < rows) {
             oss << '\n';
