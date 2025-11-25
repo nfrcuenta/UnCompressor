@@ -25,7 +25,7 @@ El objetivo principal del proyecto es reducir el tamaño de archivos de texto ge
 ## Objetivo
 
 Ofrecer una implementación clara, didáctica y funcional utilizando matrices dispersas, diccionarios y arboles, aplicando lo aprendido en 
-estructura de datos
+estructura de datos.
 
 ## Documentación
 
