@@ -24,4 +24,11 @@ El objetivo principal del proyecto es reducir el tamaño de archivos de texto ge
 
 ## Objetivo
 
-Ofrecer una implementación clara, didáctica y funcional del algoritmo de Huffman, adecuada para proyectos académicos y prácticas de estructuras de datos.
+Ofrecer una implementación clara, didáctica y funcional utilizando matrices dispersas, diccionarios y arboles, aplicando lo aprendido en 
+estructura de datos
+
+## Documentación
+
+- [Manual de usuario](docs/Dpcumentacion.pdf)
+- [Presentación del proyecto](docs/Presentacion.pdf)
+
