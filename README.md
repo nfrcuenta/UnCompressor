@@ -29,6 +29,6 @@ estructura de datos
 
 ## Documentación
 
-- [Manual de usuario](docs/Dpcumentacion.pdf)
-- [Presentación del proyecto](docs/Presentacion.pdf)
+- [Manual de usuario](docs/Documentacion.pdf)
+- [Presentación del proyecto](docs/Presentación.pdf)
 
